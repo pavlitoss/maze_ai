@@ -42,9 +42,9 @@ class Maze{ //class for creating the maze
                 }
             }
         }
-        maze[n-1][0].type = "\u25A1";
+        maze[n-1][0].type = "\u25A1"; //free bottom left and top right corners
         maze[0][n-1].type = "\u25A1";
-        maze[S_x][S_y].type = "S";
+        maze[S_x][S_y].type = "S";  //set starting-ending points
         maze[G_x][G_y].type = "G";
         start = maze[S_x][S_y];
         goal = maze[G_x][G_y];
@@ -56,6 +56,16 @@ class Maze{ //class for creating the maze
                 System.out.print(maze[i][j].type + " ");
             }
             System.out.println();
+        }
+    }
+
+    void restoreMaze(){ //restore the maze to its original state
+        for(int i=0; i<n; i++){
+            for(int j=0; j<n; j++){
+                if(maze[i][j].type.equals("x")){
+                    maze[i][j].type = "\u25A1";
+                }
+            }
         }
     }
 }
@@ -90,12 +100,6 @@ class Utilities{ //class for implementing the algorithms
         if(x+1<m.n && y+1<m.n && !visited.contains(m.maze[x+1][y+1])){ //down-right
             neighbors.add(m.maze[x+1][y+1]);
         }
-        // if(x == m.n-1 && y == 0){ //bottom-left corner
-        //     neighbors.add(m.maze[0][m.n-1]);
-        // }
-        // if(x == 0 && y == m.n-1){ //top-right corner
-        //     neighbors.add(m.maze[m.n-1][0]);
-        // }
         for(int i=0; i<neighbors.size(); i++){
             if(neighbors.get(i).type.equals("\u25FC") || neighbors.get(i).type.equals("S")){
                 neighbors.remove(i);
@@ -117,7 +121,7 @@ class Utilities{ //class for implementing the algorithms
         }
 
         @Override
-        public int compareTo(PathNode other) {
+        public int compareTo(PathNode other) { //using compareTo to compare the cost of the nodes and poll the minimum cost node from the priority queue
             return Integer.compare(this.cost, other.cost);
         }
     }
@@ -145,39 +149,56 @@ class Utilities{ //class for implementing the algorithms
                 System.out.print("START -> ");
                 for (int i = 1; i< current.path.size()-1; i++){
                     System.out.print(current.path.get(i) + " -> ");
+                    int x = current.path.get(i).x;
+                    int y = current.path.get(i).y;
+                    m.maze[x][y].type = "x"; // mark the path in the maze
                 }
-                System.out.println(" GOAL");
+                System.out.println(" GOAL\n");
+                m.printMaze();
                 return;
             }
 
             for (Cell neighbor : getNeighbors(currentCell, new ArrayList<>(visited), m)) {
                 if (!visited.contains(neighbor)) {
-                    List<Cell> newPath = new ArrayList<>(current.path);
+                    List<Cell> newPath = new ArrayList<>(current.path); //create a copy of the current path and add the neighbor
                     newPath.add(neighbor);
                     pq.add(new PathNode(neighbor, current.cost + 1, newPath)); // Cost is always 1 for now
                 }
+            }
 
-                if (currentCell.x == m.n - 1 && currentCell.y == 0) {
-                    Cell portalTarget = m.maze[0][m.n - 1];
-                    if (!visited.contains(portalTarget) && !portalTarget.type.equals("\u25FC")) {
-                        List<Cell> newPath = new ArrayList<>(current.path);
-                        newPath.add(portalTarget);
-                        pq.add(new PathNode(portalTarget, current.cost + 2, newPath));
-                    }
+            if (currentCell.x == m.n - 1 && currentCell.y == 0) {
+                Cell portalTarget = m.maze[0][m.n - 1];
+                if (!visited.contains(portalTarget) && !portalTarget.type.equals("\u25FC")) {
+                    List<Cell> newPath = new ArrayList<>(current.path);
+                    newPath.add(portalTarget);
+                    pq.add(new PathNode(portalTarget, current.cost + 2, newPath));
                 }
+            }
 
-                if (currentCell.x == 0 && currentCell.y == m.n - 1) {
-                    Cell portalTarget = m.maze[m.n - 1][0];
-                    if (!visited.contains(portalTarget) && !portalTarget.type.equals("\u25FC")) {
-                        List<Cell> newPath = new ArrayList<>(current.path);
-                        newPath.add(portalTarget);
-                        pq.add(new PathNode(portalTarget, current.cost + 2, newPath));
-                    }
+            if (currentCell.x == 0 && currentCell.y == m.n - 1) {
+                Cell portalTarget = m.maze[m.n - 1][0];
+                if (!visited.contains(portalTarget) && !portalTarget.type.equals("\u25FC")) {
+                    List<Cell> newPath = new ArrayList<>(current.path);
+                    newPath.add(portalTarget);
+                    pq.add(new PathNode(portalTarget, current.cost + 2, newPath));
                 }
             }
         }
 
         System.out.println("No path found to the goal.");
+    }
+
+    public int heuristic(Cell start, Cell goal,int n){ //heuristic function for A*
+        int dx = Math.abs(start.x - goal.x);
+        int dy = Math.abs(start.y - goal.y);
+        int distToGoal = Math.sqrt(dx*dx + dy*dy);
+        int START_TO_BL_CORNER = Math.sqrt(Math.pow(start.x - (n-1), 2) + Math.pow(start.y, 2));
+        int GOAL_TO_BL_CORNER = Math.sqrt(Math.pow(goal.x - (n-1), 2) + Math.pow(goal.y, 2));
+        int START_TO_TR_CORNER = Math.sqrt(Math.pow(start.x, 2) + Math.pow(start.y - (n-1), 2));
+        int GOAL_TO_TR_CORNER = Math.sqrt(Math.pow(goal.x, 2) + Math.pow(goal.y - (n-1), 2));
+        int dist1 = START_TO_BL_CORNER +2+ GOAL_TO_TR_CORNER;
+        int dist2 = START_TO_TR_CORNER +2+ GOAL_TO_BL_CORNER;
+        return Math.min(distToGoal, Math.min(dist1, dist2));
     }
 }
 
@@ -217,8 +238,12 @@ class Main{ //main class
         }
         m.generateMaze(n,p,S_x,S_y,G_x,G_y);
         m.printMaze();
-        System.out.println("\nRunning Uniform Cost Search\n");
+        System.out.println("\nRunning Uniform Cost Search:\n");
         Utilities utils = new Utilities();
         utils.ucs(m);
+        m.restoreMaze(); // restore the maze to its original state
+        m.printMaze();
+        System.out.println("\nRunning A*:\n");
+        sc.close();
     }
 }
