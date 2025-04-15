@@ -36,9 +36,9 @@ class Maze{ //class for creating the maze
             for(int j=0; j<n; j++){
                 double r = rand.nextDouble();
                 if(r<p){
-                    maze[i][j] = new Cell(i,j,"\u25FC");
+                    maze[i][j] = new Cell(i,j,"\u25FC"); //obstacle
                 }else{
-                    maze[i][j] = new Cell(i,j,"\u25A1");
+                    maze[i][j] = new Cell(i,j,"\u25A1"); //free cell
                 }
             }
         }
@@ -72,7 +72,7 @@ class Maze{ //class for creating the maze
 
 class Utilities{ //class for implementing the algorithms
 
-    public List<Cell> getNeighbors(Cell current, List<Cell> visited, Maze m){
+    public List<Cell> getNeighbors(Cell current, List<Cell> visited, Maze m){ //returns a list of all the neighbouring cells that can be visited
         List<Cell> neighbors = new ArrayList<>();
         int x = current.x;
         int y = current.y;
@@ -109,12 +109,12 @@ class Utilities{ //class for implementing the algorithms
         return neighbors;
     }
 
-    class PathNode implements Comparable<PathNode> {
+    class PathNode implements Comparable<PathNode> { //used for ucs
         Cell cell;
         int cost;
         List<Cell> path;
 
-        public PathNode(Cell cell, int cost, List<Cell> path) {
+        public PathNode(Cell cell, int cost, List<Cell> path) { 
             this.cell = cell;
             this.cost = cost;
             this.path = path;
@@ -162,7 +162,7 @@ class Utilities{ //class for implementing the algorithms
                 if (!visited.contains(neighbor)) {
                     List<Cell> newPath = new ArrayList<>(current.path); //create a copy of the current path and add the neighbor
                     newPath.add(neighbor);
-                    pq.add(new PathNode(neighbor, current.cost + 1, newPath)); // Cost is always 1 for now
+                    pq.add(new PathNode(neighbor, current.cost + 1, newPath));
                 }
             }
 
@@ -188,17 +188,104 @@ class Utilities{ //class for implementing the algorithms
         System.out.println("No path found to the goal.");
     }
 
-    public int heuristic(Cell start, Cell goal,int n){ //heuristic function for A*
+    class AStarNode implements Comparable<AStarNode> {
+        Cell cell;
+        int gCost; // actual cost so far
+        int fCost; // total estimated cost
+        List<Cell> path;
+
+        public AStarNode(Cell cell, int gCost, int fCost, List<Cell> path) {
+            this.cell = cell;
+            this.gCost = gCost;
+            this.fCost = fCost;
+            this.path = path;
+        }
+
+        @Override
+        public int compareTo(AStarNode other) {
+            return Integer.compare(this.fCost, other.fCost);
+        }
+    }
+
+    public int heuristic(Cell start, Cell goal,int n){ //for A*
         int dx = Math.abs(start.x - goal.x);
         int dy = Math.abs(start.y - goal.y);
-        int distToGoal = Math.sqrt(dx*dx + dy*dy);
-        int START_TO_BL_CORNER = Math.sqrt(Math.pow(start.x - (n-1), 2) + Math.pow(start.y, 2));
-        int GOAL_TO_BL_CORNER = Math.sqrt(Math.pow(goal.x - (n-1), 2) + Math.pow(goal.y, 2));
-        int START_TO_TR_CORNER = Math.sqrt(Math.pow(start.x, 2) + Math.pow(start.y - (n-1), 2));
-        int GOAL_TO_TR_CORNER = Math.sqrt(Math.pow(goal.x, 2) + Math.pow(goal.y - (n-1), 2));
+        int distToGoal = Math.max(dx, dy);
+        int START_TO_BL_CORNER = Math.max((n-1)-(start.x) ,(start.y));
+        int GOAL_TO_BL_CORNER = Math.max((n-1)-(goal.x) , (goal.y));
+        int START_TO_TR_CORNER = Math.max((start.x) , (n-1)-(start.y));
+        int GOAL_TO_TR_CORNER = Math.max((goal.x) , (n-1)-(goal.y));
         int dist1 = START_TO_BL_CORNER +2+ GOAL_TO_TR_CORNER;
         int dist2 = START_TO_TR_CORNER +2+ GOAL_TO_BL_CORNER;
         return Math.min(distToGoal, Math.min(dist1, dist2));
+    }
+
+    public void aStar(Maze m) {
+        PriorityQueue<AStarNode> pq = new PriorityQueue<>();
+        Set<Cell> visited = new HashSet<>();
+
+        List<Cell> startPath = new ArrayList<>();
+        startPath.add(m.start);
+        int startH = heuristic(m.start, m.goal,m.n);
+        pq.add(new AStarNode(m.start, 0, startH, startPath));
+
+        while (!pq.isEmpty()) {
+            AStarNode current = pq.poll();
+            Cell currentCell = current.cell;
+
+            if (visited.contains(currentCell)) continue;
+            visited.add(currentCell);
+
+            if (currentCell == m.goal) {
+                System.out.println("Goal reached with cost: " + current.gCost);
+                System.out.println("Path:");
+                System.out.print("START -> ");
+                for (int i = 1; i < current.path.size() - 1; i++) {
+                    System.out.print(current.path.get(i) + " -> ");
+                    int x = current.path.get(i).x;
+                    int y = current.path.get(i).y;
+                    m.maze[x][y].type = "x"; // mark the path in the maze
+                }
+                System.out.println(" GOAL\n");
+                m.printMaze();
+                return;
+            }
+
+            for (Cell neighbor : getNeighbors(currentCell, new ArrayList<>(visited), m)) {
+                if (!visited.contains(neighbor)) {
+                    List<Cell> newPath = new ArrayList<>(current.path);
+                    newPath.add(neighbor);
+                    int g = current.gCost + 1;
+                    int f = g + heuristic(neighbor, m.goal,m.n);
+                    pq.add(new AStarNode(neighbor, g, f, newPath));
+                }
+            }
+
+            // Handle portals like in UCS
+            if (currentCell.x == m.n - 1 && currentCell.y == 0) {
+                Cell portalTarget = m.maze[0][m.n - 1];
+                if (!visited.contains(portalTarget) && !portalTarget.type.equals("\u25FC")) {
+                    List<Cell> newPath = new ArrayList<>(current.path);
+                    newPath.add(portalTarget);
+                    int g = current.gCost + 2;
+                    int f = g + heuristic(portalTarget, m.goal,m.n);
+                    pq.add(new AStarNode(portalTarget, g, f, newPath));
+                }
+            }
+
+            if (currentCell.x == 0 && currentCell.y == m.n - 1) {
+                Cell portalTarget = m.maze[m.n - 1][0];
+                if (!visited.contains(portalTarget) && !portalTarget.type.equals("\u25FC")) {
+                    List<Cell> newPath = new ArrayList<>(current.path);
+                    newPath.add(portalTarget);
+                    int g = current.gCost + 2;
+                    int f = g + heuristic(portalTarget, m.goal,m.n);
+                    pq.add(new AStarNode(portalTarget, g, f, newPath));
+                }
+            }
+        }
+
+        System.out.println("No path found to the goal.");
     }
 }
 
@@ -242,8 +329,9 @@ class Main{ //main class
         Utilities utils = new Utilities();
         utils.ucs(m);
         m.restoreMaze(); // restore the maze to its original state
-        m.printMaze();
+        //m.printMaze();
         System.out.println("\nRunning A*:\n");
+        utils.aStar(m);
         sc.close();
     }
 }
