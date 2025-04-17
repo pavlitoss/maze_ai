@@ -1,3 +1,5 @@
+//ANAGNOSTOU PAVLOS 5440 NIKOLAOS NTERMARIS 5477
+
 import java.util.Random;
 import java.util.Scanner;
 import java.util.*;
@@ -129,6 +131,7 @@ class Utilities{ //class for implementing the algorithms
     public void ucs(Maze m) {
         PriorityQueue<PathNode> pq = new PriorityQueue<>();
         Set<Cell> visited = new HashSet<>();
+        int expansions = 0;
 
         // Initialize
         List<Cell> startPath = new ArrayList<>();
@@ -144,7 +147,7 @@ class Utilities{ //class for implementing the algorithms
 
             // Goal check
             if (currentCell == m.goal) {
-                System.out.println("Goal reached with cost: " + current.cost);
+                System.out.println("Goal reached with cost: " + current.cost + " and expansions: " + expansions);
                 System.out.println("Path:");
                 System.out.print("START -> ");
                 for (int i = 1; i< current.path.size()-1; i++){
@@ -183,6 +186,7 @@ class Utilities{ //class for implementing the algorithms
                     pq.add(new PathNode(portalTarget, current.cost + 2, newPath));
                 }
             }
+            expansions++;
         }
 
         System.out.println("No path found to the goal.");
@@ -223,6 +227,7 @@ class Utilities{ //class for implementing the algorithms
     public void aStar(Maze m) {
         PriorityQueue<AStarNode> pq = new PriorityQueue<>();
         Set<Cell> visited = new HashSet<>();
+        int expansions = 0;
 
         List<Cell> startPath = new ArrayList<>();
         startPath.add(m.start);
@@ -237,7 +242,7 @@ class Utilities{ //class for implementing the algorithms
             visited.add(currentCell);
 
             if (currentCell == m.goal) {
-                System.out.println("Goal reached with cost: " + current.gCost);
+                System.out.println("Goal reached with cost: " + current.gCost + " and expansions: " + expansions);
                 System.out.println("Path:");
                 System.out.print("START -> ");
                 for (int i = 1; i < current.path.size() - 1; i++) {
@@ -283,6 +288,7 @@ class Utilities{ //class for implementing the algorithms
                     pq.add(new AStarNode(portalTarget, g, f, newPath));
                 }
             }
+            expansions++;
         }
 
         System.out.println("No path found to the goal.");
